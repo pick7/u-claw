@@ -6,6 +6,9 @@
 
 UCLAW_DIR="$(cd "$(dirname "$0")" && pwd)"
 OPENCLAW_DIR="$UCLAW_DIR/openclaw"
+PORTABLE_HOME="$UCLAW_DIR/portable-home"
+PORTABLE_STATE_DIR="$PORTABLE_HOME/.openclaw"
+PORTABLE_CONFIG_PATH="$PORTABLE_STATE_DIR/openclaw.json"
 
 # 颜色
 RED='\033[0;31m'
@@ -29,22 +32,12 @@ else
 fi
 NODE_BIN="$NODE_DIR/bin/node"
 NPM_BIN="$NODE_DIR/bin/npm"
-PNPM_BIN="$NODE_DIR/bin/pnpm"
 export PATH="$NODE_DIR/bin:$PATH"
+export OPENCLAW_HOME="$PORTABLE_HOME"
+export OPENCLAW_STATE_DIR="$PORTABLE_STATE_DIR"
+export OPENCLAW_CONFIG_PATH="$PORTABLE_CONFIG_PATH"
 
-ensure_pnpm() {
-    if [ -x "$PNPM_BIN" ]; then
-        return 0
-    fi
-
-    echo -e "  ${YELLOW}缺少 pnpm，正在补充安装...${NC}"
-    "$NPM_BIN" install -g pnpm --registry=https://registry.npmmirror.com 2>&1
-
-    if [ ! -x "$PNPM_BIN" ]; then
-        echo -e "  ${RED}错误: pnpm 安装失败，无法继续构建${NC}"
-        return 1
-    fi
-}
+mkdir -p "$PORTABLE_STATE_DIR"
 
 # 检查安装状态
 check_status() {
@@ -52,11 +45,13 @@ check_status() {
     HAS_DIST="no"
     HAS_ENV="no"
     INSTALLED="no"
+    PORTABLE_READY="no"
 
     [ -d "$OPENCLAW_DIR/node_modules" ] && HAS_MODULES="yes"
     [ -d "$OPENCLAW_DIR/dist" ] && HAS_DIST="yes"
     [ -f "$OPENCLAW_DIR/.env" ] && HAS_ENV="yes"
     [ -d "$HOME/.uclaw/openclaw" ] && INSTALLED="yes"
+    [ -f "$PORTABLE_CONFIG_PATH" ] && PORTABLE_READY="yes"
 }
 
 # 显示主菜单
@@ -85,17 +80,21 @@ show_menu() {
     [ "$HAS_DIST" = "yes" ] && STATUS_BUILD="${GREEN}已构建${NC}"
     [ "$INSTALLED" = "yes" ] && STATUS_INST="${GREEN}已安装${NC}"
 
-    echo -e "  ${CYAN}║${NC}  系统: $(uname -m) | Node: $STATUS_NODE               ${CYAN}║${NC}"
-    echo -e "  ${CYAN}║${NC}  依赖: $STATUS_MOD | 构建: $STATUS_BUILD | 电脑安装: $STATUS_INST   ${CYAN}║${NC}"
+    local STATUS_PORTABLE="${RED}未配置${NC}"
+    [ "$PORTABLE_READY" = "yes" ] && STATUS_PORTABLE="${GREEN}已配置${NC}"
+    echo -e "  ${CYAN}║${NC}  系统: $(uname -m)                                      ${CYAN}║${NC}"
+    echo -e "  ${CYAN}║${NC}  Node: $STATUS_NODE                                     ${CYAN}║${NC}"
+    echo -e "  ${CYAN}║${NC}  依赖: $STATUS_MOD   构建: $STATUS_BUILD                      ${CYAN}║${NC}"
+    echo -e "  ${CYAN}║${NC}  便携配置: $STATUS_PORTABLE   电脑安装: $STATUS_INST                ${CYAN}║${NC}"
     echo -e "  ${CYAN}║${NC}                                                        ${CYAN}║${NC}"
     echo -e "  ${CYAN}╠════════════════════════════════════════════════════════╣${NC}"
     echo ""
     echo -e "  ${WHITE}${BOLD}  ━━━━ 安装 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
-    echo -e "  ${GREEN}  [1]${NC}  🚀 一键安装 OpenClaw 到电脑（推荐）"
+    echo -e "  ${GREEN}  [1]${NC}  🚀 安装 OpenClaw 到本机（仅限你自己的电脑）"
     echo -e "  ${GREEN}  [2]${NC}  📦 仅安装依赖（npm install）"
     echo -e "  ${GREEN}  [3]${NC}  🔨 仅构建项目（npm build）"
-    echo -e "  ${GREEN}  [4]${NC}  ▶️  直接从 U 盘运行（免安装）"
+    echo -e "  ${GREEN}  [4]${NC}  ▶️  直接从 U 盘运行（配置也保存在 U 盘里）"
     echo ""
     echo -e "  ${WHITE}${BOLD}  ━━━━ 中国优化 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
@@ -120,6 +119,7 @@ show_menu() {
     echo ""
     echo -e "  ${MAGENTA}  [15]${NC} 📋 查看使用说明"
     echo -e "  ${MAGENTA}  [16]${NC} ℹ️  系统信息"
+    echo -e "  ${MAGENTA}  [17]${NC} 🌐 打开本地网页控制台"
     echo -e "  ${DIM}  [0]${NC}  退出"
     echo ""
     echo -e "  ${CYAN}╚════════════════════════════════════════════════════════╝${NC}"
@@ -137,14 +137,7 @@ ensure_deps() {
     if [ ! -d "$OPENCLAW_DIR/dist" ]; then
         echo -e "  ${YELLOW}正在构建...${NC}"
         cd "$OPENCLAW_DIR"
-        if ! ensure_pnpm; then
-            return 1
-        fi
-        "$PNPM_BIN" run build 2>&1
-        if [ ! -d "$OPENCLAW_DIR/dist" ]; then
-            echo -e "  ${RED}构建失败！请检查上方错误信息${NC}"
-            return 1
-        fi
+        "$NODE_BIN" "$NPM_BIN" run build 2>&1 || true
         echo -e "  ${GREEN}构建完成${NC}"
     fi
 }
@@ -153,6 +146,9 @@ ensure_deps() {
 do_install() {
     echo ""
     echo -e "  ${CYAN}${BOLD}━━━ 一键安装 OpenClaw 到电脑 ━━━${NC}"
+    echo ""
+    echo -e "  ${YELLOW}提醒：如果这是老电脑、临时电脑、公司电脑或别人的电脑，${NC}"
+    echo -e "  ${YELLOW}更推荐返回主菜单选择 [4] 从 U 盘运行，不要安装到本机。${NC}"
     echo ""
     bash "$UCLAW_DIR/安装到电脑.command"
 }
@@ -176,14 +172,7 @@ do_build() {
     echo ""
     ensure_deps
     cd "$OPENCLAW_DIR"
-    if ! ensure_pnpm; then
-        return 1
-    fi
-    "$PNPM_BIN" run build 2>&1
-    if [ ! -d "$OPENCLAW_DIR/dist" ]; then
-        echo -e "  ${RED}构建失败！请检查上方错误信息${NC}"
-        return 1
-    fi
+    "$NODE_BIN" "$NPM_BIN" run build 2>&1
     echo ""
     echo -e "  ${GREEN}构建完成!${NC}"
 }
@@ -193,15 +182,40 @@ do_run() {
     echo ""
     echo -e "  ${CYAN}${BOLD}━━━ 从 U 盘启动 OpenClaw ━━━${NC}"
     echo ""
+    echo -e "  ${GREEN}便携模式说明：配置、状态、记忆都会写在这只 U 盘里。${NC}"
+    echo -e "  ${GREEN}拔掉 U 盘后当前会话会结束，但换一台电脑再插上还能继续用。${NC}"
+    echo ""
     ensure_deps
     cd "$OPENCLAW_DIR"
-    # 首次运行走 onboard，之后直接启动
-    if [ ! -f "$HOME/.openclaw/openclaw.json" ]; then
-        echo -e "  ${YELLOW}首次配置...${NC}"
-        "$NODE_BIN" openclaw.mjs onboard --install-daemon 2>&1
+    if [ ! -f "$PORTABLE_CONFIG_PATH" ]; then
+        echo -e "  ${YELLOW}检测到你还没有完成首次配置。${NC}"
+        echo "  首次配置会保存在 U 盘中，不会默认写进这台电脑。"
+        echo ""
+        read -p "  现在开始首次配置? (y/n) " -n 1 -r
+        echo ""
+        echo ""
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            "$NODE_BIN" openclaw.mjs onboard
+            echo ""
+            echo -e "  ${GREEN}首次配置完成，已保存到 U 盘。${NC}"
+            echo "  接下来可以选 [17] 打开网页控制台。"
+        fi
+    else
+        "$NODE_BIN" openclaw.mjs dashboard || "$NODE_BIN" openclaw.mjs
     fi
-    echo -e "  ${CYAN}启动 OpenClaw 服务...${NC}"
-    "$NODE_BIN" openclaw.mjs 2>&1 || "$NODE_BIN" "$NPM_BIN" start 2>&1
+}
+
+do_dashboard() {
+    echo ""
+    echo -e "  ${CYAN}${BOLD}━━━ 打开本地网页控制台 ━━━${NC}"
+    echo ""
+    ensure_deps
+    cd "$OPENCLAW_DIR"
+    if [ ! -f "$PORTABLE_CONFIG_PATH" ]; then
+        echo -e "  ${YELLOW}你还没有完成 U 盘便携配置。请先选 [4] 从 U 盘运行。${NC}"
+        return
+    fi
+    "$NODE_BIN" openclaw.mjs dashboard || "$NODE_BIN" openclaw.mjs
 }
 
 # [5] 配置国产模型
@@ -233,7 +247,7 @@ do_china_models() {
             echo -e "  ${CYAN}配置 DeepSeek${NC}"
             echo "  获取 API Key: https://platform.deepseek.com/"
             echo ""
-            read -s -p "  请输入 DeepSeek API Key: " API_KEY; echo
+            read -p "  请输入 DeepSeek API Key: " API_KEY
             if [ -n "$API_KEY" ]; then
                 grep -v "OPENAI_API_KEY\|OPENAI_BASE_URL" "$ENV_FILE" > "$ENV_FILE.tmp" 2>/dev/null || true
                 mv "$ENV_FILE.tmp" "$ENV_FILE"
@@ -246,7 +260,7 @@ do_china_models() {
             echo -e "  ${CYAN}配置 Kimi (月之暗面)${NC}"
             echo "  获取 API Key: https://platform.moonshot.cn/"
             echo ""
-            read -s -p "  请输入 Moonshot API Key: " API_KEY; echo
+            read -p "  请输入 Moonshot API Key: " API_KEY
             if [ -n "$API_KEY" ]; then
                 grep -v "OPENAI_API_KEY\|OPENAI_BASE_URL" "$ENV_FILE" > "$ENV_FILE.tmp" 2>/dev/null || true
                 mv "$ENV_FILE.tmp" "$ENV_FILE"
@@ -259,7 +273,7 @@ do_china_models() {
             echo -e "  ${CYAN}配置通义千问 Qwen${NC}"
             echo "  获取 API Key: https://dashscope.console.aliyun.com/"
             echo ""
-            read -s -p "  请输入 Qwen API Key: " API_KEY; echo
+            read -p "  请输入 Qwen API Key: " API_KEY
             if [ -n "$API_KEY" ]; then
                 grep -v "ZAI_API_KEY" "$ENV_FILE" > "$ENV_FILE.tmp" 2>/dev/null || true
                 mv "$ENV_FILE.tmp" "$ENV_FILE"
@@ -272,7 +286,7 @@ do_china_models() {
             echo "  获取 API Key: https://open.bigmodel.cn/"
             echo "  注意: 通过火山引擎(Volcano Engine)接入"
             echo ""
-            read -s -p "  请输入 API Key: " API_KEY; echo
+            read -p "  请输入 API Key: " API_KEY
             if [ -n "$API_KEY" ]; then
                 echo "# 智谱GLM (via Volcano Engine)" >> "$ENV_FILE"
                 echo "VOLCENGINE_API_KEY=$API_KEY" >> "$ENV_FILE"
@@ -283,7 +297,7 @@ do_china_models() {
             echo -e "  ${CYAN}配置 MiniMax${NC}"
             echo "  获取 API Key: https://platform.minimaxi.com/"
             echo ""
-            read -s -p "  请输入 MiniMax API Key: " API_KEY; echo
+            read -p "  请输入 MiniMax API Key: " API_KEY
             if [ -n "$API_KEY" ]; then
                 grep -v "MINIMAX_API_KEY" "$ENV_FILE" > "$ENV_FILE.tmp" 2>/dev/null || true
                 mv "$ENV_FILE.tmp" "$ENV_FILE"
@@ -295,7 +309,7 @@ do_china_models() {
             echo -e "  ${CYAN}配置豆包 Doubao (字节跳动)${NC}"
             echo "  获取 API Key: https://console.volcengine.com/ark"
             echo ""
-            read -s -p "  请输入火山引擎 API Key: " API_KEY; echo
+            read -p "  请输入火山引擎 API Key: " API_KEY
             if [ -n "$API_KEY" ]; then
                 grep -v "VOLCENGINE_API_KEY" "$ENV_FILE" > "$ENV_FILE.tmp" 2>/dev/null || true
                 mv "$ENV_FILE.tmp" "$ENV_FILE"
@@ -307,7 +321,7 @@ do_china_models() {
             echo -e "  ${CYAN}配置百度千帆${NC}"
             echo "  获取 API Key: https://console.bce.baidu.com/qianfan/"
             echo ""
-            read -s -p "  请输入千帆 API Key: " API_KEY; echo
+            read -p "  请输入千帆 API Key: " API_KEY
             if [ -n "$API_KEY" ]; then
                 echo "QIANFAN_API_KEY=$API_KEY" >> "$ENV_FILE"
                 echo -e "  ${GREEN}百度千帆已配置!${NC}"
@@ -317,7 +331,7 @@ do_china_models() {
             echo -e "  ${CYAN}配置小米 Mimo${NC}"
             echo "  获取 API Key: https://dev.mi.com/mimo"
             echo ""
-            read -s -p "  请输入 Mimo API Key: " API_KEY; echo
+            read -p "  请输入 Mimo API Key: " API_KEY
             if [ -n "$API_KEY" ]; then
                 echo "MIMO_API_KEY=$API_KEY" >> "$ENV_FILE"
                 echo -e "  ${GREEN}小米 Mimo 已配置!${NC}"
@@ -862,13 +876,14 @@ while true; do
         14) do_china_guide ;;
         15) do_readme ;;
         16) do_sysinfo ;;
+        17) do_dashboard ;;
         0)
             echo -e "  ${CYAN}再见! 🦞${NC}"
             echo ""
             exit 0
             ;;
         *)
-            echo -e "  ${RED}无效选择，请输入 0-16${NC}"
+            echo -e "  ${RED}无效选择，请输入 0-17${NC}"
             ;;
     esac
 

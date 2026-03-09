@@ -6,12 +6,48 @@
 
 UCLAW_DIR="$(cd "$(dirname "$0")" && pwd)"
 OPENCLAW_DIR="$UCLAW_DIR/openclaw"
+PORTABLE_HOME="$UCLAW_DIR/portable-home"
+PORTABLE_STATE_DIR="$PORTABLE_HOME/.openclaw"
+PORTABLE_CONFIG_PATH="$PORTABLE_STATE_DIR/openclaw.json"
 
 GREEN='\033[0;32m'
 CYAN='\033[0;36m'
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
+
+run_with_spinner() {
+    local message="$1"
+    shift
+    local tmp_log
+    tmp_log="$(mktemp -t uclaw-run.XXXXXX)"
+    "$@" >"$tmp_log" 2>&1 &
+    local cmd_pid=$!
+    local frames='|/-\'
+    local i=0
+
+    while kill -0 "$cmd_pid" 2>/dev/null; do
+        local frame="${frames:i%4:1}"
+        printf "\r  %b[%s]%b %s" "$CYAN" "$frame" "$NC" "$message"
+        i=$((i + 1))
+        sleep 0.2
+    done
+
+    wait "$cmd_pid"
+    local status=$?
+    printf "\r"
+
+    if [ $status -ne 0 ]; then
+        echo -e "  ${RED}启动步骤失败：${message}${NC}"
+        sed -n '1,120p' "$tmp_log"
+        rm -f "$tmp_log"
+        read -p "  按回车键退出..."
+        exit $status
+    fi
+
+    echo -e "  ${GREEN}完成${NC} ${message}"
+    rm -f "$tmp_log"
+}
 
 clear
 echo ""
@@ -21,6 +57,8 @@ echo "  ║     U-Claw 虾盘 v1.0                ║"
 echo "  ║     OpenClaw 一键启动                ║"
 echo "  ╚══════════════════════════════════════╝"
 echo -e "${NC}"
+echo -e "  ${GREEN}推荐场景：老电脑 / 临时电脑 / 不想改本机环境${NC}"
+echo ""
 
 # 检测 CPU 架构
 ARCH=$(uname -m)
@@ -34,7 +72,6 @@ fi
 
 NODE_BIN="$NODE_DIR/bin/node"
 NPM_BIN="$NODE_DIR/bin/npm"
-PNPM_BIN="$NODE_DIR/bin/pnpm"
 
 if [ ! -f "$NODE_BIN" ]; then
     echo -e "  ${RED}错误: 找不到 Node.js 运行环境${NC}"
@@ -49,21 +86,11 @@ echo -e "  Node.js 版本: ${GREEN}${NODE_VER}${NC}"
 echo ""
 
 export PATH="$NODE_DIR/bin:$PATH"
+export OPENCLAW_HOME="$PORTABLE_HOME"
+export OPENCLAW_STATE_DIR="$PORTABLE_STATE_DIR"
+export OPENCLAW_CONFIG_PATH="$PORTABLE_CONFIG_PATH"
 
-ensure_pnpm() {
-    if [ -x "$PNPM_BIN" ]; then
-        return 0
-    fi
-
-    echo -e "  ${YELLOW}缺少 pnpm，正在补充安装...${NC}"
-    "$NPM_BIN" install -g pnpm --registry=https://registry.npmmirror.com 2>&1
-
-    if [ ! -x "$PNPM_BIN" ]; then
-        echo -e "  ${RED}错误: pnpm 安装失败，无法继续构建${NC}"
-        read -p "  按回车键退出..."
-        exit 1
-    fi
-}
+mkdir -p "$PORTABLE_STATE_DIR"
 
 # 检查依赖
 if [ ! -d "$OPENCLAW_DIR/node_modules" ]; then
@@ -71,7 +98,7 @@ if [ ! -d "$OPENCLAW_DIR/node_modules" ]; then
     echo "  （使用淘宝镜像，请稍等）"
     echo ""
     cd "$OPENCLAW_DIR"
-    "$NODE_BIN" "$NPM_BIN" install --registry=https://registry.npmmirror.com 2>&1
+    run_with_spinner "安装 npm 依赖..." "$NODE_BIN" "$NPM_BIN" install --registry=https://registry.npmmirror.com
     echo ""
     echo -e "  ${GREEN}依赖安装完成!${NC}"
     echo ""
@@ -81,13 +108,7 @@ fi
 if [ ! -d "$OPENCLAW_DIR/dist" ]; then
     echo -e "  ${YELLOW}首次运行，正在构建...${NC}"
     cd "$OPENCLAW_DIR"
-    ensure_pnpm
-    "$PNPM_BIN" run build 2>&1
-    if [ ! -d "$OPENCLAW_DIR/dist" ]; then
-        echo -e "  ${RED}构建失败，请检查错误信息${NC}"
-        read -p "  按回车键退出..."
-        exit 1
-    fi
+    run_with_spinner "构建 OpenClaw..." "$NODE_BIN" "$NPM_BIN" run build
     echo ""
 fi
 
@@ -95,17 +116,25 @@ fi
 echo -e "  ${CYAN}正在启动 OpenClaw...${NC}"
 echo ""
 cd "$OPENCLAW_DIR"
-
-# 首次运行走 onboard 配置，之后直接启动
-if [ ! -f "$HOME/.openclaw/openclaw.json" ]; then
-    echo -e "  ${YELLOW}首次配置...${NC}"
-    "$NODE_BIN" openclaw.mjs onboard --install-daemon 2>&1
+if [ ! -f "$PORTABLE_CONFIG_PATH" ]; then
+    echo -e "  ${YELLOW}检测到你还没有完成首次配置。${NC}"
+    echo "  首次配置会直接保存到 U 盘里，换电脑插上后还能继续用。"
+    echo ""
+    read -p "  现在开始首次配置? (y/n) " -n 1 -r
+    echo ""
+    echo ""
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        "$NODE_BIN" openclaw.mjs onboard
+        echo ""
+        echo -e "  ${GREEN}首次配置完成，已保存到 U 盘。${NC}"
+        echo "  下次插到别的电脑，也会继续使用这套配置。"
+    else
+        echo "  已跳过首次配置。"
+    fi
+else
+    "$NODE_BIN" openclaw.mjs dashboard || "$NODE_BIN" openclaw.mjs
 fi
 
 echo ""
-echo -e "  ${CYAN}启动 OpenClaw 服务...${NC}"
-"$NODE_BIN" openclaw.mjs 2>&1 || "$NODE_BIN" "$NPM_BIN" start 2>&1
-
-echo ""
-echo -e "  ${YELLOW}OpenClaw 已退出${NC}"
+echo -e "  ${YELLOW}OpenClaw 已退出。拔掉 U 盘后，本次便携运行就会结束。${NC}"
 read -p "  按回车键关闭窗口..."

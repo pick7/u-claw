@@ -20,10 +20,9 @@ OpenClaw 支持大量国产模型，以下是推荐:
    - 注册: https://platform.moonshot.cn/
    - 免费额度: 有
 
-3. 通义千问 Qwen（阿里）—— 免费额度最大 ★ 新手推荐
+3. 通义千问 Qwen（阿里）—— 免费额度最大
    - 注册: https://dashscope.console.aliyun.com/
-   - 免费额度: 新用户 1000万 tokens，每日 2000 次调用
-   - 国内直连，无需翻墙
+   - 免费额度: 非常多
 
 4. 智谱 GLM（清华系）—— 学术场景强
    - 注册: https://open.bigmodel.cn/
@@ -41,18 +40,7 @@ OpenClaw 支持大量国产模型，以下是推荐:
 8. 小米 Mimo
    - 注册: https://dev.mi.com/mimo
 
-9. 阶跃星辰 StepFun —— Step 3.5 Flash
-   - 注册: https://platform.stepfun.com/
-   - 免费: OpenRouter 免费使用 Step 3.5 Flash
-   - 首月 Deep Research API 免费
-
 在启动菜单选 [5] 即可一键配置
-
-💡 省钱提示（2026年3月）:
-   - 零成本起步: 先用通义千问 Qwen（1000万免费 tokens）
-   - 性价比之王: DeepSeek（约 ¥1/百万 tokens，编程最强）
-   - 免费试用: 阶跃星辰 Step 3.5 Flash（通过 OpenRouter 免费）
-   - 以上优惠信息可能变化，请以各平台官网为准
 
 
 第二步：选择聊天平台
@@ -150,17 +138,19 @@ U-Claw 已预装 52 个技能，以下是最实用的:
 遇到问题?
 ══════════════════════
 
-1. 插 U 盘
-2. Mac/Windows: 打开「启动菜单」
-   Linux: 运行 `bash ./运行.sh`
-3. 选 [8] 诊断修复
-4. 如果修不好，选 [11] 重置
-5. 重置前会自动提醒你备份
+1. 插 U 盘，双击「启动菜单」
+2. 选 [8] 诊断修复
+3. 如果修不好，选 [11] 重置
+4. 重置前会自动提醒你备份
+
+安全提醒:
+  - 老电脑、共享电脑、公司电脑、临时借用电脑
+    更推荐直接从 U 盘运行
+  - 尽量不要把 OpenClaw 和配置安装到不受你控制的本机里
+  - 直接从 U 盘运行时，配置和记忆会保存在 U 盘中
+  - 同一只 U 盘换一台电脑继续插上，仍然能接着用
+  - 但运行过程中不要拔盘，拔掉后当前会话会结束
 
 加入社区:
-  - 官网: u-claw.org
+  - u-claw.org
   - GitHub: github.com/dongsheng123132/u-claw
-  - 邮箱: hefangsheng@gmail.com
-  - 微信: 扫描 U 盘内「微信二维码.jpg」添加作者
-  - 小红书: https://xhslink.com/m/6mf7Mq2M5wP
-    （技术咨询、合作交流、问题反馈、教程更新）
