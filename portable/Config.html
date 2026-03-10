@@ -209,6 +209,10 @@ pre.config-raw { background: #111; padding: 14px; border-radius: 6px; font-size:
                 <h4>Ollama <span class="tag local">本地</span></h4>
                 <p>本地运行，完全免费</p>
             </div>
+            <div class="model-card" onclick="selectModel('custom')" data-model="custom" style="grid-column: 1 / -1; border-style: dashed;">
+                <h4>🔧 自定义 / API 中转 <span class="tag">通用</span></h4>
+                <p>兼容 OpenAI 格式的任意平台（OpenRouter、API2D、New API、One API 等中转站）</p>
+            </div>
         </div>
 
         <!-- Model config form (hidden until selection) -->
@@ -605,6 +609,13 @@ const MODELS = {
         label: '无需 API Key（本地模型）',
         hint: '先安装 <a href="https://ollama.com" target="_blank">Ollama</a>，然后运行 <code>ollama run llama3.2</code>',
         showBaseUrl: true, showModelName: true, noKey: true
+    },
+    custom: {
+        provider: 'custom', name: '',
+        baseUrl: '',
+        label: 'API Key',
+        hint: '填写你的中转站/代理平台提供的 API Key。常见平台：OpenRouter、API2D、New API、One API 等',
+        showBaseUrl: true, showModelName: true, customMode: true
     }
 };
 
@@ -767,6 +778,18 @@ function selectModel(key) {
         document.getElementById('apiKey').value = 'ollama';
     } else {
         document.getElementById('apiKeyGroup').style.display = 'block';
+    }
+
+    // Custom mode: clear fields, show all, update hints
+    if (m.customMode) {
+        document.getElementById('baseUrl').value = '';
+        document.getElementById('baseUrl').placeholder = '例: https://openrouter.ai/api/v1';
+        document.getElementById('modelName').value = '';
+        document.getElementById('modelName').placeholder = '例: gpt-4o 或 deepseek-chat';
+        document.getElementById('modelNameHint').innerHTML = '填写中转站支持的模型名称，具体看平台文档';
+    } else {
+        document.getElementById('baseUrl').placeholder = 'https://api.deepseek.com/v1';
+        document.getElementById('modelNameHint').innerHTML = '默认已填好，高级用户可修改';
     }
 }
 
