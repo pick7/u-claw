@@ -92,6 +92,14 @@ export OPENCLAW_CONFIG_PATH="$PORTABLE_CONFIG_PATH"
 
 mkdir -p "$PORTABLE_STATE_DIR"
 
+# 移除 macOS 隔离标记（解决"无法验证开发者"弹窗）
+if xattr -l "$NODE_BIN" 2>/dev/null | grep -q "com.apple.quarantine"; then
+    echo -e "  ${YELLOW}正在移除 macOS 安全限制...${NC}"
+    xattr -rd com.apple.quarantine "$UCLAW_DIR" 2>/dev/null || true
+    echo -e "  ${GREEN}已移除${NC}"
+    echo ""
+fi
+
 # 检查依赖
 if [ ! -d "$OPENCLAW_DIR/node_modules" ]; then
     echo -e "  ${YELLOW}首次运行，正在安装依赖...${NC}"
