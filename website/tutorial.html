@@ -477,6 +477,7 @@ npm config get registry
 
 <h3>第三步：安装 OpenClaw</h3>
 
+<h4>方式 A：npm 安装（通用）</h4>
 <pre><code># 全局安装
 npm install -g openclaw@latest
 
@@ -485,6 +486,35 @@ npm install -g openclaw@latest --registry=https://registry.npmmirror.com
 
 # 验证
 openclaw --version</code></pre>
+
+<h4>方式 B：pnpm 安装（更快）</h4>
+<pre><code># 如果没有 pnpm，先安装
+npm install -g pnpm
+
+# 用 pnpm 安装 OpenClaw
+pnpm add -g openclaw@latest
+pnpm approve-builds -g
+openclaw onboard --install-daemon</code></pre>
+
+<h4>方式 C：从源码构建（开发者）</h4>
+<pre><code>git clone https://github.com/openclaw/openclaw.git
+cd openclaw && pnpm install && pnpm ui:build && pnpm build
+pnpm link --global
+openclaw --version</code></pre>
+
+<h3>常见安装问题</h3>
+
+<div class="warn"><strong>sharp 构建失败？</strong>添加环境变量跳过本地编译：
+<pre><code>SHARP_IGNORE_GLOBAL_LIBVIPS=1 npm install -g openclaw@latest</code></pre>
+</div>
+
+<div class="warn"><strong>找不到 openclaw 命令？</strong>PATH 未包含全局 bin 目录：
+<pre><code># 添加到 ~/.zshrc 或 ~/.bashrc
+export PATH="$(npm prefix -g)/bin:$PATH"
+source ~/.zshrc</code></pre>
+</div>
+
+<div class="tip"><strong>Windows 用户建议：</strong>推荐使用 WSL2（Windows Subsystem for Linux）安装，兼容性最好。原生 Windows 可能遇到路径和权限问题。</div>
 
 <h3>第四步：启动配置向导</h3>
 
@@ -521,6 +551,20 @@ openclaw dashboard       # 打开网页控制台</code></pre>
 </table>
 
 <div class="tip"><strong>推荐：</strong>国内用户先选 DeepSeek，注册即送免费额度，API 直连无需翻墙。</div>
+
+<h3>新手首次配置推荐</h3>
+<p>如果你是第一次配置 AI 模型，以下模型<strong>配置最简单</strong>，适合入门：</p>
+
+<table>
+    <tr><th>模型</th><th>配置难度</th><th>说明</th></tr>
+    <tr><td><strong>Kimi (月之暗面)</strong></td><td>⭐ 最简单</td><td>注册即用，向导直接选择</td></tr>
+    <tr><td><strong>智谱 GLM</strong></td><td>⭐ 简单</td><td>免费额度，配置直观</td></tr>
+    <tr><td><strong>通义千问 Qwen</strong></td><td>⭐ 简单</td><td>阿里云生态，免费额度大</td></tr>
+    <tr><td><strong>DeepSeek</strong></td><td>⭐⭐ 简单</td><td>需填 Custom Provider + Base URL</td></tr>
+    <tr><td><strong>腾讯混元</strong></td><td>⭐⭐ 中等</td><td>腾讯云生态</td></tr>
+</table>
+
+<div class="danger"><strong>注意：</strong>不建议新手使用淘宝等渠道购买的第三方 API Key。这类 Key 来源不明，调试困难，容易出问题。请直接到各模型官网注册获取。</div>
 
 <!-- DeepSeek -->
 <h2 id="model-deepseek">DeepSeek 配置 <span class="badge badge-green">国内首选</span></h2>
@@ -757,6 +801,7 @@ openclaw gateway restart</code></pre>
     </div>
 </div>
 
+
 <!-- 微信 -->
 <h2 id="platform-wechat">微信机器人 <span class="badge badge-yellow">社区插件</span></h2>
 
@@ -909,6 +954,26 @@ netstat -ano | findstr ":18789"
 # 杀死进程后重启
 openclaw gateway restart</code></pre>
 
+<h3>sharp 构建失败</h3>
+<pre><code># 跳过 sharp 本地编译
+SHARP_IGNORE_GLOBAL_LIBVIPS=1 npm install -g openclaw@latest</code></pre>
+<p><code>sharp</code> 是图片处理库，某些系统缺少编译工具会报错。上面的环境变量可跳过本地编译。</p>
+
+<h3>找不到 openclaw 命令（PATH 问题）</h3>
+<pre><code># 查看全局 bin 目录
+npm prefix -g
+
+# 添加到 PATH（写入 ~/.zshrc 或 ~/.bashrc）
+export PATH="$(npm prefix -g)/bin:$PATH"
+source ~/.zshrc</code></pre>
+
+<h3>Windows：原生 vs WSL2</h3>
+<p>原生 Windows 安装可能遇到路径、权限、编译工具问题。<strong>推荐使用 WSL2</strong>：</p>
+<pre><code># 安装 WSL2（管理员 PowerShell）
+wsl --install
+
+# 然后在 WSL2 Ubuntu 中按 Mac/Linux 步骤安装</code></pre>
+
 <h3>完全重置</h3>
 <pre><code># 重置所有配置
 openclaw reset --scope full
@@ -1001,6 +1066,7 @@ docker compose up -d</code></pre>
     <tr><td rowspan="3"><strong>教程</strong></td><td><a href="https://github.com/datawhalechina/hello-claw">hello-claw</a></td><td>Datawhale 体系化入门教程</td></tr>
     <tr><td><a href="https://github.com/yeuxuan/openclaw-docs">openclaw-docs</a></td><td>276 篇源码级深度文档</td></tr>
     <tr><td><a href="https://github.com/VoltAgent/awesome-openclaw-skills">awesome-openclaw-skills</a></td><td>社区精选技能合集</td></tr>
+    <tr><td><strong>社区教程</strong></td><td><a href="https://docs.openclaw.ai/zh-CN/install">官方安装手册（中文）</a></td><td>OpenClaw 官方中文安装文档，含 pnpm、源码构建等</td></tr>
     <tr><td rowspan="2"><strong>工具</strong></td><td><a href="https://github.com/NapNeko/NapCatQQ">NapCatQQ</a></td><td>QQ 机器人框架（备选）</td></tr>
     <tr><td><a href="https://github.com/icesword0760/openclaw-wechat">openclaw-wechat</a></td><td>微信接入插件</td></tr>
 </table>
